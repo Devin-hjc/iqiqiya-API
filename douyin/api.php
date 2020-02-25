@@ -56,10 +56,44 @@ function zz_video_url($content){
     $item_ids = $matches[0];
     return $item_ids;
 }
+function curl($url, $getinfo=false)
+{
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_NOBODY, false);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3600);
+    curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+    curl_setopt($ch, CURLOPT_ENCODING, '');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array('User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1'));
+    if($getinfo){
+    curl_exec($ch);
+    $data = curl_getinfo($ch,CURLINFO_EFFECTIVE_URL);
+    }else{
+    $data = curl_exec($ch);
+    }
+    curl_close($ch);
+    return $data;
+}
+
+function error($str){
+    return json_encode([
+        "code"=>-1,
+        "msg"=>$str
+        ],JSON_UNESCAPED_UNICODE);
+}
 
 $url = $_POST['url'];
 $str_r= '/(http:\/\/|https:\/\/)((\w|=|\?|\.|\/|&|-)+)/';
 preg_match_all($str_r,$url,$arr);
+
+if (!$arr[0])exit(error("请检查你输入的链接"));
+
 $share_url=$arr[0][0];
 
 //$share_url = "http://v.douyin.com/xGSE7P/";
@@ -73,5 +107,17 @@ $dytk = zz_get_dytk($content1);//匹配dytk
 $url_2 = "https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/?item_ids=".$mid."&dytk=".$dytk;//拼接最后的url
 $result = file_get_contents($url_2);
 header('Content-Type:application/json; charset=utf-8');
-print_r($result);
+//print_r($result);
+
+$result = json_decode($result);
+
+exit(json_encode([
+    "code"=>1,
+    "msg"=>"获取成功",
+    "data"=>[
+        'title' => $result->item_list[0]->desc,
+        'img' => $result->item_list[0]->video->cover->url_list[0],
+        'videourl' => curl($result->item_list[0]->video->play_addr->url_list[0], true)
+    ]
+    ],JSON_UNESCAPED_UNICODE));
 ?>
